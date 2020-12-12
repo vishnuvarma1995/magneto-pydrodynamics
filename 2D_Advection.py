@@ -20,26 +20,26 @@ Ny = 50
 N = Nx
 x, xmid, dx, dt, tfinal, gamma, rho, momentum, E, e_int, pressure, velocity, F, F2, F3, CFL = initialize.initi(v_l, v_r, rho_l, rho_r, p_l, p_r, N)
 t = 0.0
-tfinal = 0.25
+tfinal = 1.25
 dy=dx
 velocityx = np.zeros((Nx, Ny))
 velocityy = np.zeros((Nx, Ny))
 rho = np.zeros((Nx, Ny))
 pressure = np.zeros((Nx, Ny))
 # v left
-velocityx[:, :] = 0.0
+velocityx[:, :] = 0.1
 velocityy[:, :] = 0.0
 # v right
 # velocityx[:, :] = 0.3
 # velocityy[:, :] = 0.4
 # rho left
 rho[:, :] = 0.125
-rho[:, :] = 1.0
+rho[20:30, 20:30] = 1.0
 # rho right
 # pressure left
-pressure[:25, :] = 1.0
+pressure[:, :] = 1.0
 # pressure right
-pressure[25:, :] = 0.1
+# pressure[25:, :] = 0.1
 # Save initial conditions
 e = pressure/( rho*(gamma-1) )
 energy = e + 0.5*(velocityx**2 + velocityy**2)
@@ -289,7 +289,7 @@ while t<tfinal and nn < 200:
     # pressure = (U3 - 0.5*rho*velocity**2)*(gamma - 1)
     # plt.plot(rho)
     # plt.plot(velocity)
-    plt.contourf(velocityx)
+    plt.contourf(rho)
     plt.colorbar()
     plt.draw()
     plt.pause(0.0001)
