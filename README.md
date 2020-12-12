@@ -9,4 +9,5 @@
 - [ ] Multidimensional solver for full set of Euler Equations.
 - [ ] Approximate Riemann solvers to resolve shocks. In particular, implement HLLE and HLLC solvers. I might consider adding a Roe solver as well for comparison. 
 - [ ] Piecewise linear reconstruction.
+- [ ] Refactor code: Currently extremely messy, so I'll need to make it more functional.
 - [ ] Addition of magnetohydrodynamics. 
