@@ -57,12 +57,16 @@ while t<tfinal and nn < 2000:
     p = pressure
     e = p/( r*(gamma-1) )
     E = e + 0.5*v**2
+
     # Convert primitive variables to conservative
     ## TODO: Put variables into arrays and multiply with dot products
     q1   = r
     q2   = r*v
     q3   = r*E
 
+    for i in range(1, N-1):
+        v[i] = 0.5*(v[i] + v[i+1])
+    v[0] = v[1] - 0.5*v[1]
     # Calculate fluxes
     F_rho   = q1*v
     F_mom1  = q2*v
@@ -84,36 +88,79 @@ while t<tfinal and nn < 2000:
     S_p = np.zeros(N)
     S_e = np.zeros(N)
 
+    # for i in range(1, N-1):
+    #     if v[i] > 0.0:
+    #         F_rhoR[i] = q1[i]*v[i]#F_rho[i]
+    #         F_rhoL[i] = q1[i-1]*v[i]#F_rho[i-1]
+    #         F_mom1R[i] = q2[i]*v[i]
+    #         F_mom1L[i] = q2[i-1]*v[i]
+    #         F_ene1R[i] = q3[i]*v[i]
+    #         F_ene1L[i] = q3[i-1]*v[i]
+    #         F_ene2R[i] = p[i]*v[i]
+    #         F_ene2L[i] = p[i-1]*v[i]
+    #     elif v[i] < 0.0:
+    #         F_rhoR[i] = q1[i+1]*v[i]
+    #         F_rhoL[i] = q1[i]*v[i]
+    #         F_mom1R[i] = q2[i+1]*v[i]
+    #         F_mom1L[i] = q2[i]*v[i]
+    #         F_ene1R[i] = q3[i+1]*v[i]
+    #         F_ene1L[i] = q3[i]*v[i]
+    #         F_ene2R[i] = p[i+1]*v[i]
+    #         F_ene2L[i] = p[i]*v[i]
+    #     else:
+    #         F_rhoR[i]  = 0.0
+    #         F_rhoL[i]  = 0.0
+    #         F_mom1R[i] = 0.0
+    #         F_mom1L[i] = 0.0
+    #         F_mom2R[i] = 0.0
+    #         F_mom2L[i] = 0.0
+    #         F_ene1R[i] = 0.0
+    #         F_ene1L[i] = 0.0
+    #         F_ene2R[i] = 0.0
+    #         F_ene2L[i] = 0.0
+    # Piecewise Linear reconstruction
+    sigmaR1 = np.zeros(N)
+    sigmaR2 = np.zeros(N)
+    sigmaR3 = np.zeros(N)
+    sigmaR4 = np.zeros(N)
+    sigmaL1 = np.zeros(N)
+    sigmaL2 = np.zeros(N)
+    sigmaL3 = np.zeros(N)
+    sigmaL4 = np.zeros(N)
+    # Fromm's method
+    for i in range(1, N-1):
+        sigmaR1[i] = 0.5*(q1[i+1] - q1[i-1])/dx
+        sigmaR2[i] = 0.5*(q2[i+1] - q2[i-1])/dx
+        sigmaR3[i] = 0.5*(q3[i+1] - q3[i-1])/dx
+        sigmaR4[i] = 0.5*(p[i+1] - p[i-1])/dx
+        sigmaL1[i] = 0.5*(q1[i+1] - q1[i-1])/dx
+        sigmaL2[i] = 0.5*(q2[i+1] - q2[i-1])/dx
+        sigmaL3[i] = 0.5*(q3[i+1] - q3[i-1])/dx
+        sigmaL4[i] = 0.5*(p[i+1] - p[i-1])/dx
     for i in range(1, N-1):
         if v[i] > 0.0:
-            F_rhoR[i] = F_rho[i]
-            F_rhoL[i] = F_rho[i-1]
-            F_mom1R[i] = F_mom1[i]
-            F_mom1L[i] = F_mom1[i-1]
-            F_mom2R[i] = F_mom2[i]
-            F_mom2L[i] = F_mom2[i-1]
-            F_ene1R[i] = F_ene1[i]
-            F_ene1L[i] = F_ene1[i-1]
-            F_ene2R[i] = F_ene2[i]
-            F_ene2L[i] = F_ene2[i-1]
+            F_rhoR[i] = q1[i]*v[i] + 0.5*v[i]*sigmaR1[i]*(dx - v[i]*dx)
+            F_rhoL[i] = q1[i-1]*v[i] + 0.5*v[i]*sigmaL1[i]*(dx - v[i]*dx)
+            F_mom1R[i] = q2[i]*v[i] + 0.5*v[i]*sigmaR2[i]*(dx - v[i]*dx)
+            F_mom1L[i] = q2[i-1]*v[i] + 0.5*v[i]*sigmaL2[i]*(dx - v[i]*dx)
+            F_ene1R[i] = q3[i]*v[i] + 0.5*v[i]*sigmaR3[i]*(dx - v[i]*dx)
+            F_ene1L[i] = q3[i-1]*v[i] + 0.5*v[i]*sigmaL3[i]*(dx - v[i]*dx)
+            F_ene2R[i] = p[i]*v[i] #+ 0.5*v[i]*sigmaR4*(dx - v[i]*dx)
+            F_ene2L[i] = p[i-1]*v[i] #+ 0.5*v[i]*sigmaL4*(dx - v[i]*dx)
         elif v[i] < 0.0:
-            F_rhoR[i] = F_rho[i+1]
-            F_rhoL[i] = F_rho[i]
-            F_mom1R[i] = F_mom1[i+1]
-            F_mom1L[i] = F_mom1[i]
-            F_mom2R[i] = F_mom2[i+1]
-            F_mom2L[i] = F_mom2[i]
-            F_ene1R[i] = F_ene1[i+1]
-            F_ene1L[i] = F_ene1[i]
-            F_ene2R[i] = F_ene2[i+1]
-            F_ene2L[i] = F_ene2[i]
+            F_rhoR[i] = q1[i+1]*v[i] - 0.5*v[i]*sigmaR1[i]*(dx + v[i]*dx)
+            F_rhoL[i] = q1[i]*v[i] - 0.5*v[i]*sigmaL1[i]*(dx + v[i]*dx)
+            F_mom1R[i] = q2[i+1]*v[i] - 0.5*v[i]*sigmaR2[i]*(dx + v[i]*dx)
+            F_mom1L[i] = q2[i]*v[i] - 0.5*v[i]*sigmaL2[i]*(dx + v[i]*dx)
+            F_ene1R[i] = q3[i+1]*v[i] - 0.5*v[i]*sigmaR3[i]*(dx + v[i]*dx)
+            F_ene1L[i] = q3[i]*v[i] - 0.5*v[i]*sigmaL3[i]*(dx + v[i]*dx)
+            F_ene2R[i] = p[i+1]*v[i] #- 0.5*v[i]*sigmaR4[i]*(dx + v[i]*dx)
+            F_ene2L[i] = p[i]*v[i] #- 0.5*v[i]*sigmaL4[i]*(dx + v[i]*dx)
         else:
             F_rhoR[i]  = 0.0
             F_rhoL[i]  = 0.0
             F_mom1R[i] = 0.0
             F_mom1L[i] = 0.0
-            F_mom2R[i] = 0.0
-            F_mom2L[i] = 0.0
             F_ene1R[i] = 0.0
             F_ene1L[i] = 0.0
             F_ene2R[i] = 0.0
@@ -127,19 +174,10 @@ while t<tfinal and nn < 2000:
 
     # Update in time
     t += dt
-    # First advection
-    # for i in range(1, N-2):
-    #     q1half = q1 - (dt/dx)*(F_rho[i+1] - F_rho[i])
-    #     q2half = q2 - (dt/dx)*(F_mom1[i+1] - F_mom1[i])
-    # q1half[0] = q1half[1]
-    # q1half[N-1] = q1half[N-2]
-    # q2half[0] = q2half[1]
-    # q2half[N-1] = q2half[N-2]
+
     q1half = tm.upwind(q1, F_rhoR, F_rhoL, dt, dx)
     q2half = tm.upwind(q2, F_mom1R, F_mom1L, dt, dx)
     q3half = tm.upwind(q3, F_ene1R, F_ene1L, dt, dx)
-    # Calculate source terms
-
     for i in range(1, N-2):
         S_p[i] = dt*(F_mom2[i+1] - F_mom2[i-1])/(2*dx)
         S_e[i] = dt*(F_ene2[i+1] - F_ene2[i-1])/(2*dx)
@@ -183,3 +221,6 @@ ax[3].plot(x[:-1], Energy, 'k') #row=0, col=0
 ax[3].plot(x[:-1], save_energy, 'k', linestyle=":") #row=0, col=0
 ax[3].set_ylabel('Energy')
 plt.show()
+# Main routine to call and solve the advection equation
+
+import numpy as np
