@@ -12,5 +12,6 @@
 ## TODO:
 - [ ] Multidimensional solver for full set of Euler Equations.
 - [ ] Implement HLLC solvers. I might consider adding a Roe solver as well for comparison.- [ ] Piecewise-parabolic reconstruction.
+- [ ] Create better input and output (i/o) modules.
 - [ ] Refactor code: Currently extremely messy, so I'll need to make it more functional.
 - [ ] Addition of magnetohydrodynamics. 
