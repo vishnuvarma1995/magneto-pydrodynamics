@@ -15,25 +15,24 @@ rho_r = 0.125
 p_l = 1.0
 p_r = 0.1
 
-N = 500
+N = 1000
 
 x, xmid, dx, dt, tfinal, gamma, rho, momentum, E, e_int, pressure, velocity, F, F2, F3, CFL = initialize.initi(v_l, v_r, rho_l, rho_r, p_l, p_r, N)
 t = 0.0
 tfinal = 0.25
 
-# Blast Wave Problem
+#Blast Wave Problem
 # rho[:] = 1.0
 # velocity[:] = 0.0
-# # For N=500
 # pressure[:50] = 1000
 # pressure[50:450] = 0.1
 # pressure[450:] = 100
 
 # 123 Problem
 # rho[:] = 1.0
-# velocity[:250] = -2.0
-# velocity[250:] = 2.0
-# pressure[:250] = 0.4
+# velocity[:500] = -2.0
+# velocity[500:] = 2.0
+# pressure[:500] = 0.4
 
 
 # Save initial conditions
@@ -64,9 +63,9 @@ while t<tfinal and nn < 2000:
     q2   = r*v
     q3   = r*E
 
-    for i in range(1, N-1):
-        v[i] = 0.5*(v[i] + v[i+1])
-    v[0] = v[1] - 0.5*v[1]
+    # for i in range(1, N-1):
+    #     v[i] = 0.5*(v[i] + v[i+1])
+    # v[0] = v[1] - 0.5*v[1]
     # Calculate fluxes
     F_rho   = q1*v
     F_mom1  = q2*v
@@ -88,36 +87,6 @@ while t<tfinal and nn < 2000:
     S_p = np.zeros(N)
     S_e = np.zeros(N)
 
-    # for i in range(1, N-1):
-    #     if v[i] > 0.0:
-    #         F_rhoR[i] = q1[i]*v[i]#F_rho[i]
-    #         F_rhoL[i] = q1[i-1]*v[i]#F_rho[i-1]
-    #         F_mom1R[i] = q2[i]*v[i]
-    #         F_mom1L[i] = q2[i-1]*v[i]
-    #         F_ene1R[i] = q3[i]*v[i]
-    #         F_ene1L[i] = q3[i-1]*v[i]
-    #         F_ene2R[i] = p[i]*v[i]
-    #         F_ene2L[i] = p[i-1]*v[i]
-    #     elif v[i] < 0.0:
-    #         F_rhoR[i] = q1[i+1]*v[i]
-    #         F_rhoL[i] = q1[i]*v[i]
-    #         F_mom1R[i] = q2[i+1]*v[i]
-    #         F_mom1L[i] = q2[i]*v[i]
-    #         F_ene1R[i] = q3[i+1]*v[i]
-    #         F_ene1L[i] = q3[i]*v[i]
-    #         F_ene2R[i] = p[i+1]*v[i]
-    #         F_ene2L[i] = p[i]*v[i]
-    #     else:
-    #         F_rhoR[i]  = 0.0
-    #         F_rhoL[i]  = 0.0
-    #         F_mom1R[i] = 0.0
-    #         F_mom1L[i] = 0.0
-    #         F_mom2R[i] = 0.0
-    #         F_mom2L[i] = 0.0
-    #         F_ene1R[i] = 0.0
-    #         F_ene1L[i] = 0.0
-    #         F_ene2R[i] = 0.0
-    #         F_ene2L[i] = 0.0
     # Piecewise Linear reconstruction
     sigmaR1 = np.zeros(N)
     sigmaR2 = np.zeros(N)
@@ -137,44 +106,46 @@ while t<tfinal and nn < 2000:
         sigmaL2[i] = 0.5*(q2[i+1] - q2[i-1])/dx
         sigmaL3[i] = 0.5*(q3[i+1] - q3[i-1])/dx
         sigmaL4[i] = 0.5*(p[i+1] - p[i-1])/dx
+
+    # Calculate HLL Riemann Solver shock/rarefaction velocities
+    Cs = np.sqrt(gamma*np.array(np.abs(p))/np.array(np.abs(r)))
+    velocity = np.array(velocity)
+    lambdaL = np.zeros(N)
+    lambdaR = np.zeros(N)
+    for i in range(0, N-1):
+        lambdaL[i] = velocity[i] - Cs[i]
+        lambdaR[i] = velocity[i+1] + Cs[i+1]
     for i in range(1, N-1):
-        if v[i] > 0.0:
+        if lambdaL[i] > 0.0:
             F_rhoR[i] = q1[i]*v[i] + 0.5*v[i]*sigmaR1[i]*(dx - v[i]*dx)
             F_rhoL[i] = q1[i-1]*v[i] + 0.5*v[i]*sigmaL1[i]*(dx - v[i]*dx)
             F_mom1R[i] = q2[i]*v[i] + 0.5*v[i]*sigmaR2[i]*(dx - v[i]*dx)
             F_mom1L[i] = q2[i-1]*v[i] + 0.5*v[i]*sigmaL2[i]*(dx - v[i]*dx)
             F_ene1R[i] = q3[i]*v[i] + 0.5*v[i]*sigmaR3[i]*(dx - v[i]*dx)
             F_ene1L[i] = q3[i-1]*v[i] + 0.5*v[i]*sigmaL3[i]*(dx - v[i]*dx)
-            F_ene2R[i] = p[i]*v[i] #+ 0.5*v[i]*sigmaR4*(dx - v[i]*dx)
-            F_ene2L[i] = p[i-1]*v[i] #+ 0.5*v[i]*sigmaL4*(dx - v[i]*dx)
-        elif v[i] < 0.0:
+
+        elif lambdaR[i] < 0.0:
             F_rhoR[i] = q1[i+1]*v[i] - 0.5*v[i]*sigmaR1[i]*(dx + v[i]*dx)
             F_rhoL[i] = q1[i]*v[i] - 0.5*v[i]*sigmaL1[i]*(dx + v[i]*dx)
             F_mom1R[i] = q2[i+1]*v[i] - 0.5*v[i]*sigmaR2[i]*(dx + v[i]*dx)
             F_mom1L[i] = q2[i]*v[i] - 0.5*v[i]*sigmaL2[i]*(dx + v[i]*dx)
             F_ene1R[i] = q3[i+1]*v[i] - 0.5*v[i]*sigmaR3[i]*(dx + v[i]*dx)
             F_ene1L[i] = q3[i]*v[i] - 0.5*v[i]*sigmaL3[i]*(dx + v[i]*dx)
-            F_ene2R[i] = p[i+1]*v[i] #- 0.5*v[i]*sigmaR4[i]*(dx + v[i]*dx)
-            F_ene2L[i] = p[i]*v[i] #- 0.5*v[i]*sigmaL4[i]*(dx + v[i]*dx)
+
         else:
-            F_rhoR[i]  = 0.0
-            F_rhoL[i]  = 0.0
-            F_mom1R[i] = 0.0
-            F_mom1L[i] = 0.0
-            F_ene1R[i] = 0.0
-            F_ene1L[i] = 0.0
-            F_ene2R[i] = 0.0
-            F_ene2L[i] = 0.0
+            F_rhoR[i]  = (lambdaR[i]*q1[i]*v[i] - lambdaL[i]*q1[i+1]*v[i+1] + lambdaR[i]*lambdaL[i]*(q1[i+1]-q1[i]))/(lambdaR[i] - lambdaL[i])
+            F_rhoL[i]  = (lambdaR[i]*q1[i-1]*v[i-1] - lambdaL[i]*q1[i]*v[i] + lambdaR[i]*lambdaL[i]*(q1[i]-q1[i-1]))/(lambdaR[i] - lambdaL[i])
+            F_mom1R[i] = (lambdaR[i]*q2[i]*v[i] - lambdaL[i]*q2[i+1]*v[i+1] + lambdaR[i]*lambdaL[i]*(q2[i+1]-q2[i]))/(lambdaR[i] - lambdaL[i])
+            F_mom1L[i] = (lambdaR[i]*q2[i-1]*v[i-1] - lambdaL[i]*q2[i]*v[i] + lambdaR[i]*lambdaL[i]*(q2[i]-q2[i-1]))/(lambdaR[i] - lambdaL[i])
+            F_ene1R[i] = (lambdaR[i]*q3[i]*v[i] - lambdaL[i]*q3[i+1]*v[i+1] + lambdaR[i]*lambdaL[i]*(q3[i+1]-q3[i]))/(lambdaR[i] - lambdaL[i])
+            F_ene1L[i] = (lambdaR[i]*q3[i-1]*v[i-1] - lambdaL[i]*q3[i]*v[i] + lambdaR[i]*lambdaL[i]*(q3[i]-q3[i-1]))/(lambdaR[i] - lambdaL[i])
 
     # Check CFL condition
     vmax = max(abs(v))
-    Cs = np.sqrt(np.abs(cs_2))
-    # cmax = max(abs(Cs))
-    dt = CFL*dx/(vmax + Cs)
+    dt = CFL*dx/(np.max(np.abs(lambdaR)))
 
     # Update in time
     t += dt
-
     q1half = tm.upwind(q1, F_rhoR, F_rhoL, dt, dx)
     q2half = tm.upwind(q2, F_mom1R, F_mom1L, dt, dx)
     q3half = tm.upwind(q3, F_ene1R, F_ene1L, dt, dx)
@@ -197,16 +168,13 @@ while t<tfinal and nn < 2000:
     pressure = (gamma - 1)*(q3 - 0.5*(q2**2)/q1)
     e = pressure/( rho*(gamma-1) )
     Energy = e + 0.5*velocity**2
-    # pressure = (U3 - 0.5*rho*velocity**2)*(gamma - 1)
-    # plt.plot(rho)
-    # plt.plot(velocity)
+
     plt.plot(rho)
     plt.draw()
     plt.pause(0.0001)
     plt.clf()
 plt.close()
-# old style
-# fig = plt.figure(figsize=(15,15))
+
 fig, ax = plt.subplots(4, 1, figsize=(10,20), sharex=True)
 ax[0].plot(x[:-1], rho, 'r') #row=0, col=0
 ax[0].plot(x[:-1], save_rho, 'r', linestyle=":") #row=0, col=0
@@ -221,6 +189,3 @@ ax[3].plot(x[:-1], Energy, 'k') #row=0, col=0
 ax[3].plot(x[:-1], save_energy, 'k', linestyle=":") #row=0, col=0
 ax[3].set_ylabel('Energy')
 plt.show()
-# Main routine to call and solve the advection equation
-
-import numpy as np
