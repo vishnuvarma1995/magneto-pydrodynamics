@@ -19,7 +19,7 @@ N = 1000
 
 x, xmid, dx, dt, tfinal, gamma, rho, momentum, E, e_int, pressure, velocity, F, F2, F3, CFL = initialize.initi(v_l, v_r, rho_l, rho_r, p_l, p_r, N)
 t = 0.0
-tfinal = 0.25
+tfinal = 0.15
 
 #Blast Wave Problem
 # rho[:] = 1.0
@@ -29,10 +29,10 @@ tfinal = 0.25
 # pressure[450:] = 100
 
 # 123 Problem
-# rho[:] = 1.0
-# velocity[:500] = -2.0
-# velocity[500:] = 2.0
-# pressure[:500] = 0.4
+rho[:] = 1.0
+velocity[:500] = -2.0
+velocity[500:] = 2.0
+pressure[:] = 0.4
 
 
 # Save initial conditions
@@ -63,9 +63,6 @@ while t<tfinal and nn < 2000:
     q2   = r*v
     q3   = r*E
 
-    # for i in range(1, N-1):
-    #     v[i] = 0.5*(v[i] + v[i+1])
-    # v[0] = v[1] - 0.5*v[1]
     # Calculate fluxes
     F_rho   = q1*v
     F_mom1  = q2*v
@@ -169,11 +166,11 @@ while t<tfinal and nn < 2000:
     e = pressure/( rho*(gamma-1) )
     Energy = e + 0.5*velocity**2
 
-    plt.plot(rho)
-    plt.draw()
-    plt.pause(0.0001)
-    plt.clf()
-plt.close()
+#     plt.plot(rho)
+#     plt.draw()
+#     plt.pause(0.0001)
+#     plt.clf()
+# plt.close()
 
 fig, ax = plt.subplots(4, 1, figsize=(10,20), sharex=True)
 ax[0].plot(x[:-1], rho, 'r') #row=0, col=0
