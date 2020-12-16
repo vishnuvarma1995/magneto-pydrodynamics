@@ -5,35 +5,51 @@ import matplotlib.pyplot as plt
 import initialize
 import RiemannSolver as riemann
 import TimeStepping as tm
+import Reconstruction as reconstruct
 
 # Begin Program
 # Initial conditions
-v_l = 0.0
-v_r = 0.0
-rho_l = 1.0
-rho_r = 0.125
-p_l = 1.0
-p_r = 0.1
+# v_l = 0.0
+# v_r = 0.0
+# rho_l = 1.0
+# rho_r = 0.125
+# p_l = 1.0
+# p_r = 0.1
 
-N = 1000
+N = 500
+Nx = N
+gamma = 1.66 # For gamma law pressure, 1.66 for ideal gas
+dx = 1/Nx
+x = np.linspace(0, 1, Nx)
 
-x, xmid, dx, dt, tfinal, gamma, rho, momentum, E, e_int, pressure, velocity, F, F2, F3, CFL = initialize.initi(v_l, v_r, rho_l, rho_r, p_l, p_r, N)
+# x, xmid, dx, dt, tfinal, gamma, rho, momentum, E, e_int, pressure, velocity, F, F2, F3, CFL = initialize.initi(v_l, v_r, rho_l, rho_r, p_l, p_r, N)
 t = 0.0
-tfinal = 0.15
+tfinal = 0.25
+rho = np.zeros(Nx)
+energy = np.zeros(Nx)
+pressure = np.zeros(Nx)
+velocity = np.zeros(Nx)
+
+# Sod's shock tube problem
+pressure[:int(Nx/2)] = 1.0
+pressure[int(Nx/2):] = 0.1
+rho[:int(Nx/2)] = 1.0
+rho[int(Nx/2):] = 0.125
+velocity[:int(Nx/2)] = 0.0
+velocity[int(Nx/2):] = 0.0
 
 #Blast Wave Problem
 # rho[:] = 1.0
 # velocity[:] = 0.0
-# pressure[:50] = 1000
-# pressure[50:450] = 0.1
-# pressure[450:] = 100
+# pressure[:int(Nx/10)] = 1000
+# pressure[int(Nx/10):int(9*Nx/10)] = 0.1
+# pressure[int(9*Nx/10):] = 100
 
 # 123 Problem
-rho[:] = 1.0
-velocity[:500] = -2.0
-velocity[500:] = 2.0
-pressure[:] = 0.4
-
+# rho[:] = 1.0
+# velocity[:int(Nx/2)] = -2.0
+# velocity[int(Nx/2):] = 2.0
+# pressure[:] = 0.4
 
 # Save initial conditions
 e = pressure/( rho*(gamma-1) )
@@ -46,7 +62,7 @@ save_energy = energy
 nn = 0
 # Sound speed
 CFL=0.5
-cs_2 = gamma*pressure[0]/rho[0]
+
 while t<tfinal and nn < 2000:
     if nn%10 == 0:
         print("time: ", t)
@@ -70,86 +86,26 @@ while t<tfinal and nn < 2000:
     F_ene1  = q3*v#gamma*(q3*q2)/q1
     F_ene2  = p*v#0.5*(1-gamma)*(q2**3)/(q1**2)
 
-    #Get left and right states of flux
-    F_rhoR = np.zeros(N)
-    F_rhoL = np.zeros(N)
-    F_mom1R = np.zeros(N)
-    F_mom1L = np.zeros(N)
-    F_mom2R = np.zeros(N)
-    F_mom2L = np.zeros(N)
-    F_ene1R = np.zeros(N)
-    F_ene1L = np.zeros(N)
-    F_ene2R = np.zeros(N)
-    F_ene2L = np.zeros(N)
-    S_p = np.zeros(N)
-    S_e = np.zeros(N)
-
-    # Piecewise Linear reconstruction
-    sigmaR1 = np.zeros(N)
-    sigmaR2 = np.zeros(N)
-    sigmaR3 = np.zeros(N)
-    sigmaR4 = np.zeros(N)
-    sigmaL1 = np.zeros(N)
-    sigmaL2 = np.zeros(N)
-    sigmaL3 = np.zeros(N)
-    sigmaL4 = np.zeros(N)
-    # Fromm's method
-    for i in range(1, N-1):
-        sigmaR1[i] = 0.5*(q1[i+1] - q1[i-1])/dx
-        sigmaR2[i] = 0.5*(q2[i+1] - q2[i-1])/dx
-        sigmaR3[i] = 0.5*(q3[i+1] - q3[i-1])/dx
-        sigmaR4[i] = 0.5*(p[i+1] - p[i-1])/dx
-        sigmaL1[i] = 0.5*(q1[i+1] - q1[i-1])/dx
-        sigmaL2[i] = 0.5*(q2[i+1] - q2[i-1])/dx
-        sigmaL3[i] = 0.5*(q3[i+1] - q3[i-1])/dx
-        sigmaL4[i] = 0.5*(p[i+1] - p[i-1])/dx
-
-    # Calculate HLL Riemann Solver shock/rarefaction velocities
+    # Calculate sound speed
     Cs = np.sqrt(gamma*np.array(np.abs(p))/np.array(np.abs(r)))
-    velocity = np.array(velocity)
-    lambdaL = np.zeros(N)
-    lambdaR = np.zeros(N)
-    for i in range(0, N-1):
-        lambdaL[i] = velocity[i] - Cs[i]
-        lambdaR[i] = velocity[i+1] + Cs[i+1]
-    for i in range(1, N-1):
-        if lambdaL[i] > 0.0:
-            F_rhoR[i] = q1[i]*v[i] + 0.5*v[i]*sigmaR1[i]*(dx - v[i]*dx)
-            F_rhoL[i] = q1[i-1]*v[i] + 0.5*v[i]*sigmaL1[i]*(dx - v[i]*dx)
-            F_mom1R[i] = q2[i]*v[i] + 0.5*v[i]*sigmaR2[i]*(dx - v[i]*dx)
-            F_mom1L[i] = q2[i-1]*v[i] + 0.5*v[i]*sigmaL2[i]*(dx - v[i]*dx)
-            F_ene1R[i] = q3[i]*v[i] + 0.5*v[i]*sigmaR3[i]*(dx - v[i]*dx)
-            F_ene1L[i] = q3[i-1]*v[i] + 0.5*v[i]*sigmaL3[i]*(dx - v[i]*dx)
 
-        elif lambdaR[i] < 0.0:
-            F_rhoR[i] = q1[i+1]*v[i] - 0.5*v[i]*sigmaR1[i]*(dx + v[i]*dx)
-            F_rhoL[i] = q1[i]*v[i] - 0.5*v[i]*sigmaL1[i]*(dx + v[i]*dx)
-            F_mom1R[i] = q2[i+1]*v[i] - 0.5*v[i]*sigmaR2[i]*(dx + v[i]*dx)
-            F_mom1L[i] = q2[i]*v[i] - 0.5*v[i]*sigmaL2[i]*(dx + v[i]*dx)
-            F_ene1R[i] = q3[i+1]*v[i] - 0.5*v[i]*sigmaR3[i]*(dx + v[i]*dx)
-            F_ene1L[i] = q3[i]*v[i] - 0.5*v[i]*sigmaL3[i]*(dx + v[i]*dx)
-
-        else:
-            F_rhoR[i]  = (lambdaR[i]*q1[i]*v[i] - lambdaL[i]*q1[i+1]*v[i+1] + lambdaR[i]*lambdaL[i]*(q1[i+1]-q1[i]))/(lambdaR[i] - lambdaL[i])
-            F_rhoL[i]  = (lambdaR[i]*q1[i-1]*v[i-1] - lambdaL[i]*q1[i]*v[i] + lambdaR[i]*lambdaL[i]*(q1[i]-q1[i-1]))/(lambdaR[i] - lambdaL[i])
-            F_mom1R[i] = (lambdaR[i]*q2[i]*v[i] - lambdaL[i]*q2[i+1]*v[i+1] + lambdaR[i]*lambdaL[i]*(q2[i+1]-q2[i]))/(lambdaR[i] - lambdaL[i])
-            F_mom1L[i] = (lambdaR[i]*q2[i-1]*v[i-1] - lambdaL[i]*q2[i]*v[i] + lambdaR[i]*lambdaL[i]*(q2[i]-q2[i-1]))/(lambdaR[i] - lambdaL[i])
-            F_ene1R[i] = (lambdaR[i]*q3[i]*v[i] - lambdaL[i]*q3[i+1]*v[i+1] + lambdaR[i]*lambdaL[i]*(q3[i+1]-q3[i]))/(lambdaR[i] - lambdaL[i])
-            F_ene1L[i] = (lambdaR[i]*q3[i-1]*v[i-1] - lambdaL[i]*q3[i]*v[i] + lambdaR[i]*lambdaL[i]*(q3[i]-q3[i-1]))/(lambdaR[i] - lambdaL[i])
+    # Get left and right states of flux
+    F_rhoR, F_rhoL, F_mom1R, F_mom1L, F_ene1R, F_ene1L = reconstruct.HLLE_reconstruction_1D(q1,q2,q3,v,Cs,N,dx, reconstruction='lin', linearmethod='centered')
 
     # Check CFL condition
-    vmax = max(abs(v))
-    dt = CFL*dx/(np.max(np.abs(lambdaR)))
-
+    dt = CFL*dx/(np.max(np.abs(v+Cs)))
+    # Initialize arrays for source terms (variables treated as source terms to advection problem)
+    S_p = np.zeros(N)
+    S_e = np.zeros(N)
     # Update in time
     t += dt
     q1half = tm.upwind(q1, F_rhoR, F_rhoL, dt, dx)
     q2half = tm.upwind(q2, F_mom1R, F_mom1L, dt, dx)
     q3half = tm.upwind(q3, F_ene1R, F_ene1L, dt, dx)
+    # Update source terms
     for i in range(1, N-2):
         S_p[i] = dt*(F_mom2[i+1] - F_mom2[i-1])/(2*dx)
         S_e[i] = dt*(F_ene2[i+1] - F_ene2[i-1])/(2*dx)
-
     S_p[0] = S_p[1]
     S_p[N-1] = S_p[N-2]
     S_e[0] = S_e[1]
@@ -161,7 +117,6 @@ while t<tfinal and nn < 2000:
     # Convert conservative variables to primitive
     rho = q1
     velocity = q2/q1
-    # pressure = cs_2*q1
     pressure = (gamma - 1)*(q3 - 0.5*(q2**2)/q1)
     e = pressure/( rho*(gamma-1) )
     Energy = e + 0.5*velocity**2
@@ -173,16 +128,16 @@ while t<tfinal and nn < 2000:
 # plt.close()
 
 fig, ax = plt.subplots(4, 1, figsize=(10,20), sharex=True)
-ax[0].plot(x[:-1], rho, 'r') #row=0, col=0
-ax[0].plot(x[:-1], save_rho, 'r', linestyle=":") #row=0, col=0
+ax[0].plot(x[:], rho, 'r')
+ax[0].plot(x[:], save_rho, 'r', linestyle=":")
 ax[0].set_ylabel('Density')
-ax[1].plot(x[:-1], velocity, 'b') #row=0, col=0
-ax[1].plot(x[:-1], save_velocity, 'b', linestyle=":") #row=0, col=0
+ax[1].plot(x[:], velocity, 'b')
+ax[1].plot(x[:], save_velocity, 'b', linestyle=":")
 ax[1].set_ylabel('Velocity')
-ax[2].plot(x[:-1], pressure, 'g') #row=0, col=0
-ax[2].plot(x[:-1], save_pressure, 'g', linestyle=":") #row=0, col=0
+ax[2].plot(x[:], pressure, 'g')
+ax[2].plot(x[:], save_pressure, 'g', linestyle=":")
 ax[2].set_ylabel('Pressure')
-ax[3].plot(x[:-1], Energy, 'k') #row=0, col=0
-ax[3].plot(x[:-1], save_energy, 'k', linestyle=":") #row=0, col=0
+ax[3].plot(x[:], Energy, 'k')
+ax[3].plot(x[:], save_energy, 'k', linestyle=":")
 ax[3].set_ylabel('Energy')
 plt.show()
